@@ -5,38 +5,61 @@ const counter = require('./counter');
 
 var items = {};
 
+// Helper functions
+const makeFilePath = id => path.join(exports.dataDir, `${id}.txt`);
+
 // Public API - Fix these CRUD functions ///////////////////////////////////////
 
 exports.create = (text, callback) => {
-  var id = counter.getNextUniqueId();
-  items[id] = text;
-  callback(null, { id, text });
+  counter.getNextUniqueId((err, id) => {
+    items[id] = text;
+    fs.writeFile(makeFilePath(id), text, (err) => {
+      if(err) {
+        callback(err);
+      } else {
+        callback(null, { id, text });
+      }
+    });
+  });
 };
 
 exports.readAll = (callback) => {
-  var data = _.map(items, (text, id) => {
-    return { id, text };
+  fs.readdir(exports.dataDir, (err, files) => {
+    var data = _.map(files, (fileName) => {
+      const fileExt = /\.txt$/;
+      const id = fileName.replace(fileExt, '');
+      return { id, text: id };
+    });
+    callback(null, data);
   });
-  callback(null, data);
 };
 
 exports.readOne = (id, callback) => {
-  var text = items[id];
-  if (!text) {
-    callback(new Error(`No item with id: ${id}`));
-  } else {
-    callback(null, { id, text });
-  }
+  fs.readFile(makeFilePath(id), 'utf8', (err, fileData) => {
+    if (err) {
+      callback(err);
+    } else {
+      items[id] = fileData;
+      callback(null, { id, text: fileData });
+    }
+  });
 };
 
 exports.update = (id, text, callback) => {
   var item = items[id];
-  if (!item) {
-    callback(new Error(`No item with id: ${id}`));
-  } else {
-    items[id] = text;
-    callback(null, { id, text });
-  }
+  fs.writeFile(makeFilePath(id), text, {flag: 'wx'}, (err) => {
+    if(err) {
+      callback(err);
+    } else {
+      callback(null, { id, text });
+    }
+  });
+  // if (!item) {
+  //   callback(new Error(`No item with id: ${id}`));
+  // } else {
+  //   items[id] = text;
+  //   callback(null, { id, text });
+  // }
 };
 
 exports.delete = (id, callback) => {
