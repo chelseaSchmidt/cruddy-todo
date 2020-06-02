@@ -1,4 +1,5 @@
 const expect = require('chai').expect;
+const assert = require('chai').assert;
 const fs = require('fs');
 const path = require('path');
 
@@ -26,39 +27,45 @@ describe('getNextUniqueId', () => {
   beforeEach(initializeTestCounter);
   beforeEach(cleanTestDatastore);
 
-  it('should use error first callback pattern', (done) => {
-    counter.getNextUniqueId((err, id) => {
-      expect(err).to.be.null;
+  it(`return a promise that resolves to an id`, (done) => {
+    counter.getNextUniqueId()
+    .then(id => {
       expect(id).to.exist;
       done();
-    });
+    })
+    .catch(err => assert.fail(err));
   });
 
   it('should give an id as a zero padded string', (done) => {
-    counter.getNextUniqueId((err, id) => {
-      expect(id).to.be.a.string;
-      expect(id).to.match(/^0/);
-      done();
-    });
+    counter.getNextUniqueId()
+      .then(id => {
+        expect(id).to.be.a.string;
+        expect(id).to.match(/^0/);
+        done();
+      })
+      .catch(err => assert.fail(err));
   });
 
   it('should give the next id based on the count in the file', (done) => {
     fs.writeFileSync(counter.counterFile, '00025');
-    counter.getNextUniqueId((err, id) => {
+    counter.getNextUniqueId()
+    .then(id => {
       expect(id).to.equal('00026');
       done();
-    });
+    })
+    .catch(err => assert.fail(err));
   });
 
   it('should update the counter file with the next value', (done) => {
     fs.writeFileSync(counter.counterFile, '00371');
-    counter.getNextUniqueId((err, id) => {
+    counter.getNextUniqueId()
+    .then(id => {
       const counterFileContents = fs.readFileSync(counter.counterFile).toString();
       expect(counterFileContents).to.equal('00372');
       done();
-    });
+    })
+    .catch(err => assert.fail(err));
   });
-
 });
 
 describe('todos', () => {
@@ -68,41 +75,50 @@ describe('todos', () => {
 
   describe('create', () => {
     it('should create a new file for each todo', (done) => {
-      todos.create('todo1', (err, data) => {
-        const todoCount = fs.readdirSync(todos.dataDir).length;
-        expect(todoCount).to.equal(1);
-        todos.create('todo2', (err, data) => {
+      todos.create('todo1')
+        .then(() => {
+          const todoCount = fs.readdirSync(todos.dataDir).length;
+          expect(todoCount).to.equal(1);
+          return todos.create('todo2');
+        })
+        .then(() => {
           expect(fs.readdirSync(todos.dataDir)).to.have.lengthOf(2);
           done();
-        });
-      });
+        })
+        .catch(err => assert.fail(err));
     });
 
     it('should use the generated unique id as the filename', (done) => {
       fs.writeFileSync(counter.counterFile, '00142');
-      todos.create('buy fireworks', (err, todo) => {
-        const todoExists = fs.existsSync(path.join(todos.dataDir, '00143.txt'));
-        expect(todoExists).to.be.true;
-        done();
-      });
+      todos.create('buy fireworks')
+        .then(todo => {
+          const todoExists = fs.existsSync(path.join(todos.dataDir, '00143.txt'));
+          expect(todoExists).to.be.true;
+          done();
+        })
+        .catch(err => assert.fail(err));
     });
 
     it('should only save todo text contents in file', (done) => {
       const todoText = 'walk the dog';
-      todos.create(todoText, (err, todo) => {
-        const todoFileContents = fs.readFileSync(path.join(todos.dataDir, `${todo.id}.txt`)).toString();
-        expect(todoFileContents).to.equal(todoText);
-        done();
-      });
+      todos.create(todoText)
+        .then(todo => {
+          const todoFileContents = fs.readFileSync(path.join(todos.dataDir, `${todo.id}.txt`)).toString();
+          expect(todoFileContents).to.equal(todoText);
+          done();
+        })
+        .catch(err => assert.fail(err));
     });
 
     it('should pass a todo object to the callback on success', (done) => {
       const todoText = 'refactor callbacks to promises';
-      todos.create(todoText, (err, todo) => {
-        expect(todo).to.include({ text: todoText });
-        expect(todo).to.have.property('id');
-        done();
-      });
+      todos.create(todoText)
+        .then(todo => {
+          expect(todo).to.include({ text: todoText });
+          expect(todo).to.have.property('id');
+          done();
+        })
+        .catch(err => assert.fail(err));
     });
   });
 

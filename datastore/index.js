@@ -3,7 +3,8 @@ const path = require('path');
 const _ = require('underscore');
 const Promise = require('bluebird');
 const counter = require('./counter');
-const readFilePromise = Promise.promisify(fs.readFile);
+const readFile = Promise.promisify(fs.readFile);
+const writeFile = Promise.promisify(fs.writeFile);
 
 var items = {};
 
@@ -12,16 +13,21 @@ const makeFilePath = id => path.join(exports.dataDir, `${id}.txt`);
 
 // Public API - Fix these CRUD functions ///////////////////////////////////////
 
-exports.create = (text, callback) => {
-  counter.getNextUniqueId((err, id) => {
-    items[id] = text;
-    fs.writeFile(makeFilePath(id), text, (err) => {
-      if(err) {
-        callback(err);
-      } else {
-        callback(null, { id, text });
-      }
-    });
+exports.create = text => {
+  let newId;
+  return new Promise((resolve, reject) => {
+    counter.getNextUniqueId()
+      .then(id => {
+        newId = id;
+        items[newId] = text;
+        return writeFile(makeFilePath(id), text);
+      })
+      .then(() => {
+        resolve({newId, text});
+      })
+      .catch(err => {
+        reject(err);
+      });
   });
 };
 
@@ -31,7 +37,7 @@ exports.readAll = (callback) => {
       callback(err);
     }
     const promises = _.map(files, file => {
-      return readFilePromise(path.join(exports.dataDir, file), 'utf8');
+      return readFile(path.join(exports.dataDir, file), 'utf8');
     });
     Promise.all(promises)
       .then(fileStrings => {
