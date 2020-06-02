@@ -46,20 +46,20 @@ exports.readOne = (id, callback) => {
 };
 
 exports.update = (id, text, callback) => {
-  var item = items[id];
-  fs.writeFile(makeFilePath(id), text, {flag: 'wx'}, (err) => {
-    if(err) {
+  // var item = items[id];
+  fs.readFile(makeFilePath(id), (err) => {
+    if (err) {
       callback(err);
     } else {
-      callback(null, { id, text });
+      fs.writeFile(makeFilePath(id), text, (err) => {
+        if(err) {
+          callback(err);
+        } else {
+          callback(null, { id, text });
+        }
+      });
     }
   });
-  // if (!item) {
-  //   callback(new Error(`No item with id: ${id}`));
-  // } else {
-  //   items[id] = text;
-  //   callback(null, { id, text });
-  // }
 };
 
 exports.delete = (id, callback) => {
